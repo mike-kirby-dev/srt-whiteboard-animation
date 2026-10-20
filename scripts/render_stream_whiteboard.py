@@ -473,6 +473,11 @@ def _parse_args(argv=None):
     p.add_argument("--brush-radius", type=int, default=None)
     p.add_argument("--cap-long-edge", type=int, default=None,
                    help="Maximum output long-side pixels (lower it for faster previews, default 1080)")
+    p.add_argument("--speed", type=float, default=1.0,
+                   help="Drawing speed multiplier: 1.5 draws 1.5x faster (every region's startMs and durationMs "
+                        "divided by it). The scene length is unchanged, so the end hold grows or shrinks")
+    p.add_argument("--ink-color-ratio", default=None, metavar="INK:COLOR",
+                   help="Split of each region's time between line drawing and colouring, e.g. 3:1 (default 2:1)")
     return p.parse_args(argv)
 
 
@@ -486,6 +491,11 @@ def _build_cfg(args) -> sr.Config:
         kw["brush_radius"] = args.brush_radius
     if args.cap_long_edge is not None:
         kw["cap_long_edge"] = args.cap_long_edge
+    if args.ink_color_ratio:
+        ink, color = (float(x) for x in args.ink_color_ratio.split(":"))
+        if ink <= 0 or color <= 0:
+            raise SystemExit("--ink-color-ratio parts must both be > 0")
+        kw["ink_weight"], kw["color_weight"] = ink, color
     kw["ink_path_mode"] = args.ink_path
     kw["color_fill"] = args.color_fill
     kw["pause_mode"] = args.pause
@@ -513,6 +523,14 @@ def main(argv=None) -> int:
         print("[err] No elements in the annotation")
         return 1
 
+    if args.speed <= 0:
+        print("[err] --speed must be > 0")
+        return 1
+    if args.speed != 1.0:
+        for e in annotation["elements"]:
+            e["reveal"]["startMs"] = round(e["reveal"]["startMs"] / args.speed)
+            e["reveal"]["durationMs"] = max(1, round(e["reveal"]["durationMs"] / args.speed))
+
     total_ms = args.total_ms if args.total_ms is not None else annotation.get("sceneDurationMs")
     if not total_ms:
         last = max(e["reveal"]["startMs"] + e["reveal"]["durationMs"] for e in annotation["elements"])
@@ -529,6 +547,10 @@ def main(argv=None) -> int:
     print(f"  Regions: {len(annotation['elements'])}, Total duration: {total_ms}ms, "
           f"Strokes: {cfg.ink_path_mode}, Colouring: {cfg.color_fill}")
 
+    draw_end = max(e["reveal"]["startMs"] + e["reveal"]["durationMs"] for e in annotation["elements"])
+    if draw_end + 500 > total_ms:
+        print(f"[warn] Drawing ends at {draw_end}ms, past the {total_ms}ms scene length: "
+              "the video will run longer than its narration")
     renderer.render_to(raw_path, total_ms)
     final = sr.transcode_h264(raw_path, out_path)
 
