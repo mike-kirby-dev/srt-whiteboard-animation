@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-SRT 解析 + 分镜建议
+SRT parsing + storyboard suggestions
 
-把 .srt 字幕解析成结构化字幕条，并按「每幕 25-35 秒口播」的建议把字幕
-分组成场景，给出每个场景的起止时间、总时长（→ sceneDurationMs）和文本。
+Parse a .srt subtitle file into structured cues, and group the cues into scenes
+at roughly 25-35 seconds of narration per scene, giving each scene its start/end time, total duration (-> sceneDurationMs) and text.
 
-用途：作为 srt-whiteboard-animation 工作流第 1 步的输入依据——
-读出叙事事件、规划配图策略、并为每张图片的标注确定 sceneDurationMs。
+Purpose: input for step 1 of the srt-whiteboard-animation workflow --
+read out the narrative events, plan the illustration strategy, and set sceneDurationMs for each image's annotation.
 
-用法：
-  python parse_srt.py <字幕.srt> [--target-sec 30] [--min-sec 25] [--max-sec 35]
+Usage:
+  python parse_srt.py <subtitles.srt> [--target-sec 30] [--min-sec 25] [--max-sec 35]
 
-输出：JSON（stdout），字段：
-  cues    每条字幕: {index, startMs, endMs, durMs, text}
-  scenes  建议场景: {sceneIndex, startMs, endMs, sceneDurationMs, cueRange, text}
-标准 stderr 打印人类可读摘要，便于直接阅读。
+Output: JSON (stdout) with fields:
+  cues    each subtitle cue: {index, startMs, endMs, durMs, text}
+  scenes  suggested scene: {sceneIndex, startMs, endMs, sceneDurationMs, cueRange, text}
+A human-readable summary is printed to stderr for easy reading.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def _to_ms(h: str, m: str, s: str, ms: str) -> int:
 
 
 def parse_srt(text: str) -> list[dict]:
-    """把 SRT 文本解析成字幕条列表。容忍多余空行、BOM、逗号/点毫秒分隔。"""
+    """Parse SRT text into a list of subtitle cues. Tolerates extra blank lines, a BOM, and comma or dot millisecond separators."""
     text = text.lstrip("﻿").replace("\r\n", "\n").replace("\r", "\n")
     blocks = re.split(r"\n\s*\n", text.strip())
     cues: list[dict] = []
@@ -40,7 +40,7 @@ def parse_srt(text: str) -> list[dict]:
         lines = [ln for ln in block.split("\n") if ln.strip() != ""]
         if not lines:
             continue
-        # 找到含时间轴的行
+        # Find the line containing the timecode
         time_line_idx = next((i for i, ln in enumerate(lines) if "-->" in ln), None)
         if time_line_idx is None:
             continue
@@ -62,8 +62,8 @@ def parse_srt(text: str) -> list[dict]:
 
 def group_scenes(cues: list[dict], target_sec: float, min_sec: float, max_sec: float) -> list[dict]:
     """
-    按目标时长把连续字幕聚成场景：累积到 target 附近就断一幕，
-    但不小于 min、不大于 max（超过 max 强制断幕）。
+    Group consecutive cues into scenes by target duration: start a new scene once the total nears target,
+    but never below min or above max (exceeding max forces a break).
     """
     scenes: list[dict] = []
     bucket: list[dict] = []
@@ -85,14 +85,14 @@ def group_scenes(cues: list[dict], target_sec: float, min_sec: float, max_sec: f
         bucket.clear()
 
     for cue in cues:
-        # 若把这条并进当前幕会超过 max，先断幕（避免出现超长幕）
+        # If adding this cue would exceed max, break the scene first (avoids overlong scenes)
         if bucket:
             span_with = cue["endMs"] - bucket[0]["startMs"]
             if span_with > max_ms:
                 flush()
         bucket.append(cue)
         span = bucket[-1]["endMs"] - bucket[0]["startMs"]
-        # 达到目标且不短于 min 即断幕
+        # Break once the target is reached and the scene is at least min long
         if span >= target_ms and span >= min_ms:
             flush()
     flush()
@@ -100,30 +100,30 @@ def group_scenes(cues: list[dict], target_sec: float, min_sec: float, max_sec: f
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="SRT 解析 + 分镜建议")
-    p.add_argument("srt", help="字幕文件路径 (.srt)")
-    p.add_argument("--target-sec", type=float, default=30.0, help="每幕目标口播秒数（默认 30）")
-    p.add_argument("--min-sec", type=float, default=25.0, help="每幕最短秒数（默认 25）")
-    p.add_argument("--max-sec", type=float, default=35.0, help="每幕最长秒数（默认 35）")
+    p = argparse.ArgumentParser(description="SRT parsing + storyboard suggestions")
+    p.add_argument("srt", help="Path to the subtitle file (.srt)")
+    p.add_argument("--target-sec", type=float, default=30.0, help="Target narration seconds per scene (default 30)")
+    p.add_argument("--min-sec", type=float, default=25.0, help="Minimum seconds per scene (default 25)")
+    p.add_argument("--max-sec", type=float, default=35.0, help="Maximum seconds per scene (default 35)")
     args = p.parse_args(argv)
 
     try:
         raw = Path(args.srt).read_text(encoding="utf-8-sig")
     except OSError as e:
-        print(f"[err] 无法读取字幕: {e}", file=sys.stderr)
+        print(f"[err] Cannot read subtitles: {e}", file=sys.stderr)
         return 1
 
     cues = parse_srt(raw)
     if not cues:
-        print("[err] 未解析到任何字幕条，请检查 SRT 格式", file=sys.stderr)
+        print("[err] No subtitle cues parsed; check the SRT format", file=sys.stderr)
         return 1
     scenes = group_scenes(cues, args.target_sec, args.min_sec, args.max_sec)
 
     total_ms = cues[-1]["endMs"] - cues[0]["startMs"]
-    print(f"字幕条: {len(cues)}  总时长: {total_ms/1000:.1f}s  建议场景: {len(scenes)}", file=sys.stderr)
+    print(f"Cues: {len(cues)}  Total duration: {total_ms/1000:.1f}s  suggested scenes: {len(scenes)}", file=sys.stderr)
     for s in scenes:
-        print(f"  幕{s['sceneIndex']:>2}  {s['startMs']/1000:6.1f}-{s['endMs']/1000:6.1f}s "
-              f"({s['sceneDurationMs']/1000:4.1f}s, 字幕{s['cueRange'][0]}-{s['cueRange'][1]}): "
+        print(f"  Scene {s['sceneIndex']:>2}  {s['startMs']/1000:6.1f}-{s['endMs']/1000:6.1f}s "
+              f"({s['sceneDurationMs']/1000:4.1f}s, cues {s['cueRange'][0]}-{s['cueRange'][1]}): "
               f"{s['text'][:40]}", file=sys.stderr)
 
     json.dump({"cues": cues, "scenes": scenes}, sys.stdout, ensure_ascii=False, indent=2)

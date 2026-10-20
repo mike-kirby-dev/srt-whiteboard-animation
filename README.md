@@ -1,86 +1,88 @@
-# SRT 白板动画 Skill
+# SRT Whiteboard Animation Skill
 
-将 SRT 字幕转为按叙事顺序绘制的白板手绘视频Skill。它结合了**分区遮罩编排**与**流式笔迹绘制**：每个元素跟随字幕依次出场，笔尖在区域内连续落墨，再逐步添彩，最终导出 MP4。
+> English translation of [geeklee/srt-whiteboard-animation](https://github.com/geeklee/srt-whiteboard-animation) (MIT).
 
-适合把知识讲解、故事口播、课程字幕或短视频文案制作成暖米黄色纸张底的手绘动画。
+A Skill that turns SRT subtitles into a whiteboard hand-drawing video, drawn in narrative order. It combines **mask-region choreography** with **flowing pen-stroke drawing**: each element appears in step with the subtitles, the pen tip lays down ink continuously within its region, then colour is added gradually, and the result is exported as an MP4.
 
-## 效果示例
+It suits knowledge explainers, story narration, course subtitles or short-video scripts that you want as hand-drawn animation on warm cream paper.
 
-**场景：猴子山抢香蕉** —— 随着字幕的叙事顺序，依次绘制假山与小猴、抢香蕉的大猴，以及围观小朋友。
+## Example
 
-![猴子山抢香蕉：SRT 白板动画演示](examples/scene-01-monkey-mountain-stream.gif)
+**Scene: Monkeys fighting over a banana on Monkey Mountain** — following the narrative order of the subtitles, it draws the rockery and the little monkey, the big monkey snatching the banana, and the children looking on.
 
-原始线稿：[查看 PNG](examples/scene-01-monkey-mountain.png)。
+![Monkeys fighting over a banana on Monkey Mountain: SRT whiteboard animation demo](examples/scene-01-monkey-mountain-stream.gif)
 
-## 核心能力
+Original line art: [view PNG](examples/scene-01-monkey-mountain.png).
 
-- 解析 SRT 字幕，并按建议的 25–35 秒时长拆分场景
-- 先输出分镜与配图策略，确保每一幕只表达一个核心意思
-- 按字幕事件而非画面坐标，为元素建立语义化的绘制顺序
-- 用 `annotation.json` 管理区域、时序、字幕关联和重叠保护区
-- 每个区域采用连续流式笔迹：先 `ink` 铺线稿，再 `color` 添彩
-- 支持浏览器预览台调整区域、顺序、时间和字幕关联
-- 支持逐幕渲染与多幕合并，输出完整 MP4
+## Core capabilities
 
-## 工作方式
+- Parses SRT subtitles and splits them into scenes of the suggested 25–35 seconds each
+- Outputs a storyboard and illustration strategy first, so each scene expresses just one core idea
+- Builds a semantic drawing order for elements based on subtitle events, not on screen coordinates
+- Manages regions, timing, subtitle links and overlap-protected regions with `annotation.json`
+- Uses continuous flowing pen strokes in every region: `ink` lays down the line art first, then `color` adds colour
+- Supports a browser preview studio for adjusting regions, order, timing and subtitle links
+- Supports scene-by-scene rendering and multi-scene merging, outputting a complete MP4
 
-该 Skill 的关键在于“字幕驱动、逐步确认”。每一步完成后都等待确认，避免在分镜、线稿或标注尚未定稿时浪费渲染成本：
+## How it works
 
-1. 解析 SRT，输出分镜与配图策略。
-2. 确认后生成统一风格的线稿。
-3. 确认线稿后，结合字幕和原图创建标注，并载入预览台。
-4. 确认标注后，生成分区与方向检查图。
-5. 在预览台调整区域、叙事顺序、时序和字幕关联并保存。
-6. 确认最终标注后，逐幕渲染 MP4。
-7. 多幕项目在确认各幕成片后合并。
+The key to this Skill is "subtitle-driven, confirmed step by step". After each step it waits for confirmation, so rendering effort is not wasted while the storyboard, line art or annotations are still unsettled:
 
-## 视觉规范
+1. Parse the SRT and output the storyboard and illustration strategy.
+2. After confirmation, generate line art in a consistent style.
+3. After the line art is confirmed, create annotations from the subtitles and the original image, and load them into the preview studio.
+4. After the annotations are confirmed, generate region and direction check images.
+5. In the preview studio, adjust regions, narrative order, timing and subtitle links, then save.
+6. After the final annotations are confirmed, render the MP4 scene by scene.
+7. For multi-scene projects, merge the scenes after each finished scene is confirmed.
 
-- 暖米黄色纸张背景：建议 `#F5EBD7`
-- 深灰色素描线条，红、橙、蓝仅作少量概念性点缀
-- 极简手绘、干净背景与充足留白
-- 不使用场景文字、标签、摄影感、3D 效果或复杂纹理
+## Visual guidelines
 
-## 安装与环境
+- Warm cream paper background: `#F5EBD7` recommended
+- Dark grey sketch lines, with red, orange and blue used only sparingly as conceptual accents
+- Minimal hand-drawn style, clean background and plenty of white space
+- No in-scene text, labels, photographic look, 3D effects or complex textures
 
-Skill 自带独立的 Python 虚拟环境准备脚本。首次运行时执行：
+## Installation and environment
+
+The Skill ships its own script for preparing an isolated Python virtual environment. Run this on first use:
 
 ```bash
 python scripts/prepare_env.py --check
 python scripts/prepare_env.py
 ```
 
-成功后第一条命令会输出 `ENV_PY=<路径>`；后续渲染请使用该解释器，确保依赖隔离。
+On success, the first command prints `ENV_PY=<path>`; use that interpreter for later renders to keep dependencies isolated.
 
-## 项目素材结构
+## Project asset structure
 
 ```text
-assets/whiteboard/<项目名>/
-├── scene-01-<名称>.png
-├── scene-01-<名称>.annotation.json
-├── scene-01-<名称>-whiteboard.mp4
-└── scene-01-<名称>-preview.mp4
+assets/whiteboard/<project-name>/
+├── scene-01-<name>.png
+├── scene-01-<name>.annotation.json
+├── scene-01-<name>-whiteboard.mp4
+└── scene-01-<name>-preview.mp4
 ```
 
-图片与标注必须同名，例如 `scene-01-demo.png` 对应 `scene-01-demo.annotation.json`。
+The image and its annotation must share a name, e.g. `scene-01-demo.png` pairs with `scene-01-demo.annotation.json`.
 
-## 标注格式
+## Annotation format
 
-每个元素使用原图的整数像素坐标，并通过 `sequence`、`subtitle` 与 `narrativeRole` 关联字幕中的事件。区域应按“场景铺垫 → 关键人物/物体 → 动作或变化 → 反应/结果”排序。
+Each element uses integer pixel coordinates of the original image and is linked to events in the subtitles through `sequence`, `subtitle` and `narrativeRole`. Order regions as "scene setup → key characters/objects → action or change → reaction/result".
 
 ```json
 {
   "sceneId": "scene-01",
   "canvas": { "width": 1672, "height": 941 },
-  "storyBasis": "小猴在猴子山上拿着香蕉，大猴抢走香蕉，孩子们在旁观看。",
+  "storyBasis": "The little monkey holds a banana on Monkey Mountain, the big monkey snatches it, and the children watch.",
   "sceneDurationMs": 9000,
   "elements": [
     {
       "id": "rockery",
-      "label": "猴子山场景",
+      "label": "Monkey Mountain scene",
       "sequence": 1,
-      "narrativeRole": "故事的场景铺垫",
-      "subtitle": "小猴子坐在猴子山顶，手里拿着香蕉。",
+      "narrativeRole": "Scene setup for the story",
+      "subtitle": "The little monkey sits on top of Monkey Mountain, holding a banana.",
       "type": "structure",
       "region": { "x": 20, "y": 120, "width": 540, "height": 780 },
       "reveal": {
@@ -96,74 +98,74 @@ assets/whiteboard/<项目名>/
 }
 ```
 
-`direction` 和 `handPath` 用于预览台的矩形代理；最终成片的真实笔迹由流式绘制器自动生成。对于相互遮挡的对象，在较早元素的 `protectedRegions` 中标出需要延后显示的区域，避免后续内容提前露出。
+`direction` and `handPath` drive the preview studio's rectangle proxy; the real pen strokes in the final video are generated automatically by the stream renderer. For objects that overlap, mark the areas that must appear later in the earlier element's `protectedRegions`, so later content is not revealed too early.
 
-## 常用命令
+## Common commands
 
-解析字幕并生成建议分镜：
+Parse subtitles and generate a suggested storyboard:
 
 ```bash
-python scripts/parse_srt.py <字幕.srt> --target-sec 30 --min-sec 25 --max-sec 35
+python scripts/parse_srt.py <subtitles.srt> --target-sec 30 --min-sec 25 --max-sec 35
 ```
 
-生成区域检查图：
+Generate a region check image:
 
 ```bash
-python scripts/render_annotation_preview.py <图片路径> <标注路径> <预览图输出路径>
+python scripts/render_annotation_preview.py <image-path> <annotation-path> <preview-output-path>
 ```
 
-打开 `assets/preview.html`，使用“打开文件夹”载入场景目录，即可编辑区域、顺序、时间与字幕关联。
+Open `assets/preview.html` and use "Open folder" to load the scene directory, where you can edit regions, order, timing and subtitle links.
 
-渲染单幕：
+Render a single scene:
 
 ```bash
-<ENV_PY> scripts/render_stream_whiteboard.py <图片路径> <标注路径> <输出.mp4> assets/drawing-hand.png \
+<ENV_PY> scripts/render_stream_whiteboard.py <image-path> <annotation-path> <output.mp4> assets/drawing-hand.png \
   --ink-path grid --color-fill contour-wipe
 ```
 
-合并多幕：
+Merge multiple scenes:
 
 ```bash
-<ENV_PY> scripts/merge_scenes.py --inputs 幕1.mp4 幕2.mp4 幕3.mp4 --output final.mp4
+<ENV_PY> scripts/merge_scenes.py --inputs scene1.mp4 scene2.mp4 scene3.mp4 --output final.mp4
 ```
 
-## 质量检查
+## Quality checks
 
-- 首帧是干净的暖米黄纸张底色，没有提前露出的线条
-- `canvas` 与原图尺寸一致，所有区域都是画布内的整数像素坐标
-- `sequence`、`startMs` 与字幕的叙事顺序一致
-- 中段帧中，未开始区域和保护区不会提前出现
-- 笔尖贴近当前流式笔迹；线稿清晰时可选择 `--ink-path skeleton`
-- 每幕结束后至少停留 0.5 秒完整画面；多幕合并顺序与字幕分镜一致
+- The first frame is clean warm cream paper, with no lines revealed early
+- `canvas` matches the original image size, and all regions are integer pixel coordinates inside the canvas
+- `sequence` and `startMs` match the narrative order of the subtitles
+- In mid-scene frames, regions that have not started and protected regions do not appear early
+- The pen tip stays close to the current pen strokes; when the line art is clear, you can choose `--ink-path skeleton`
+- Each scene holds the complete picture for at least 0.5 seconds at the end; the merged scene order matches the subtitle storyboard
 
-## 仓库内容
+## Repository contents
 
 ```text
 srt-whiteboard-animation/
-├── SKILL.md                         # 完整工作流与约束
+├── SKILL.md                         # Complete workflow and constraints
 ├── assets/
-│   ├── drawing-hand.png              # 手部素材
-│   ├── preview.html                  # 本地编辑预览台
-├── examples/                         # README 案例素材
+│   ├── drawing-hand.png              # Hand asset
+│   ├── preview.html                  # Local editing preview studio
+├── examples/                         # README example assets
 ├── scripts/
-│   ├── parse_srt.py                  # 字幕解析与分镜建议
-│   ├── render_annotation_preview.py  # 标注检查图
-│   ├── render_stream_whiteboard.py   # 流式笔迹 MP4 渲染器
-│   ├── merge_scenes.py               # 多幕合并
-│   └── prepare_env.py                # 依赖环境准备
-└── agents/openai.yaml                # Codex 元数据
+│   ├── parse_srt.py                  # Subtitle parsing and storyboard suggestions
+│   ├── render_annotation_preview.py  # Annotation check images
+│   ├── render_stream_whiteboard.py   # Flowing pen-stroke MP4 renderer
+│   ├── merge_scenes.py               # Multi-scene merging
+│   └── prepare_env.py                # Dependency environment setup
+└── agents/openai.yaml                # Codex metadata
 ```
 
-## 贡献
+## Contributing
 
-欢迎提交 Issue 或 Pull Request。任何涉及绘制逻辑的改动，都应使用真实的字幕、标注和成片检查遮罩保护、时序与最终画面。
+Issues and Pull Requests are welcome. Any change that touches the drawing logic should be checked against real subtitles, annotations and finished videos, to verify mask protection, timing and the final picture.
 
-## 许可证
+## License
 
-本项目基于 MIT License 开源，详见 [LICENSE](LICENSE)。
+This project is open source under the MIT License; see [LICENSE](LICENSE).
 
-## 关于作者
+## About the author
 
-一个爱养鱼的老登 / AI Builder / 用 AI 团队打造一人公司。
+A fish-keeping old-timer / AI Builder / building a one-person company with an AI team.
 
-抖音、B站、公众号：江哥是老登啊
+Original author on Douyin, Bilibili and WeChat Official Account: 江哥是老登啊 (Jiang Ge Shi Lao Deng A)
